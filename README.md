@@ -1,8 +1,16 @@
 # ublocks-ascii-art
 ![alt](https://i.imgur.com/MUKmCeR.png)  
-ASCII-art generator using unicode block characters. Usable as binary (`cargo run "hey"`) and library.
+ASCII-art generator using unicode block characters.
 
-### Usage
+### Usage (*as binary*)
+[*you need to have a rust toolchain set up*](https://rustup.rs/)
+```
+$ git clone https://github.com/NyxCode/ublocks-ascii-art
+$ cd ./ublocks-ascii-art/
+$ cargo run text
+```
+
+### Usage (*as library*)
 ```rust
 fn main() -> Result<(), SomeErr> {
     let rendered = render_text::<SimpleRaster>(&"hey!".to_owned(), Font::BadScript, (100.0, 50.0))?;
