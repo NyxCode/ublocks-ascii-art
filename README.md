@@ -1,5 +1,5 @@
 # ublocks-ascii-art
-![alt](https://i.imgur.com/MUKmCeR.png)
+![alt](https://i.imgur.com/MUKmCeR.png)  
 ASCII-art generator using unicode block characters. Usable as binary (`cargo run "hey"`) and library.
 
 ### Usage
