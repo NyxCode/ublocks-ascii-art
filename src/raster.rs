@@ -1,34 +1,45 @@
-use std::time::Instant;
-
 use bit_vec::BitVec;
-use rusttype::{Font, point, PositionedGlyph, Scale};
 
-type SomeErr = Box<dyn std::error::Error>;
+pub trait Raster {
+    fn new(width: usize, height: usize) -> Self;
 
-
-struct PixelBuffer {
-    width: usize,
-    height: usize,
-    storage: BitVec,
+    fn width(&self) -> usize;
+    fn height(&self) -> usize;
+    fn set_pixel(&mut self, x: usize, y: usize);
+    fn render(&self) -> String;
 }
 
-impl PixelBuffer {
+pub struct SimpleRaster { width: usize, height: usize, storage: BitVec }
+
+pub struct RotatedRaster<R: Raster>(R);
+
+pub type RotatedRaster90<R> = RotatedRaster<R>;
+pub type RotatedRaster180<R> = RotatedRaster90<RotatedRaster90<R>>;
+pub type RotatedRaster270<R> = RotatedRaster90<RotatedRaster180<R>>;
+
+impl Raster for SimpleRaster {
     fn new(width: usize, height: usize) -> Self {
         // make sure width and height is a multiple of 2
         let width = width + (width % 2);
         let height = height + (height % 2);
         let storage = BitVec::from_elem(width * height, false);
-        PixelBuffer { width, height, storage }
+        SimpleRaster { width, height, storage }
     }
 
-    #[inline(always)]
+    fn width(&self) -> usize {
+        self.width
+    }
+
+    fn height(&self) -> usize {
+        self.height
+    }
+
     fn set_pixel(&mut self, x: usize, y: usize) {
-        assert!((0..self.width).contains(&x) & &(0..self.height).contains(&y));
         self.storage.set(y * self.width + x, true);
     }
 
     fn render(&self) -> String {
-        fn get_unicode_block_element(quadrants: &(bool, bool, bool, bool)) -> char {
+        fn get_unicode_block_element(quadrants: (bool, bool, bool, bool)) -> char {
             match quadrants {
                 (false, false, false, false) => ' ',  // 0 0 0 0   0
                 (false, false, false, true) => '▗',  // 0 0 0 1   1
@@ -49,7 +60,6 @@ impl PixelBuffer {
             }
         }
 
-
         let mut output = String::new();
         // width and height are always a multiple of 2!
         let width_in_blocks = self.width / 2;
@@ -64,7 +74,7 @@ impl PixelBuffer {
                     self.storage[(block_y * 2 + 1) * self.width + block_x * 2 + 1],
                 );
 
-                let character = get_unicode_block_element(&subpixel);
+                let character = get_unicode_block_element(subpixel);
                 output.push(character);
             }
             output.push('\n')
@@ -74,54 +84,24 @@ impl PixelBuffer {
     }
 }
 
-fn main() -> Result<(), SomeErr> {
-    let font_data = std::fs::read("Arvo-Regular.ttf")?;
-    let font_collection = rusttype::FontCollection::from_bytes(font_data)?;
-    let font = font_collection.into_font()?;
+impl<R: Raster> Raster for RotatedRaster<R> {
+    fn new(width: usize, height: usize) -> Self {
+        RotatedRaster(R::new(height, width))
+    }
 
-    let font_scale = rusttype::Scale { x: 20.0, y: 10.0 };
+    fn width(&self) -> usize {
+        self.0.height()
+    }
 
-    let start = Instant::now();
-    let result = render_text("Heading".to_string(), &font, font_scale, 0.4)?;
-    println!("{}", result);
-    println!("{:?}", Instant::now().duration_since(start));
-    Ok(())
-}
+    fn height(&self) -> usize {
+        self.0.width()
+    }
 
-fn render_text(text: String,
-               font: &Font,
-               font_scale: Scale,
-               opacity_threshold: f32) -> Result<String, SomeErr> {
-    let v_metrics = font.v_metrics(font_scale);
-    let offset = point(0.0, v_metrics.ascent);
-    let glyphs: Vec<PositionedGlyph<'_>> = font
-        .layout(&text, font_scale, offset)
-        .collect();
+    fn set_pixel(&mut self, x: usize, y: usize) {
+        self.0.set_pixel(y, self.0.height() - 1 - x)
+    }
 
-    let width = glyphs
-        .last()
-        .map(|g| g.position().x as f32 + g.unpositioned().h_metrics().advance_width)
-        .unwrap_or(0.0)
-        .ceil() as usize;
-
-    let mut buffer = PixelBuffer::new(width, font_scale.y.ceil() as usize);
-
-    glyphs
-        .iter()
-        .flat_map(|glyph| {
-            let bounding_box = glyph.pixel_bounding_box()?;
-            Some((glyph, bounding_box))
-        })
-        .for_each(|(glyph, bounding_box)| {
-            glyph.draw(|x, y, v| {
-                if v >= opacity_threshold {
-                    let x = (x as i32 + bounding_box.min.x) as usize;
-                    let y = (y as i32 + bounding_box.min.y) as usize;
-                    buffer.set_pixel(x as usize, y as usize);
-                }
-            })
-        });
-
-
-    Ok(buffer.render())
+    fn render(&self) -> String {
+        self.0.render()
+    }
 }
