@@ -20,7 +20,7 @@ version = "0.1.0"
 default-features = false
 features = ["font-badscript", "font-rotobo", "font-roboto-mono"]
 ```
-Of course, custom fonts can be used too. Just load them (see [rusttype example]("https://gitlab.redox-os.org/redox-os/rusttype/blob/master/examples/simple.rs")) and wrap it in `Font::Custom(..)`.
+Of course, custom fonts can be used too. Just load them (see [rusttype example](https://gitlab.redox-os.org/redox-os/rusttype/blob/master/examples/simple.rs)) and wrap it in `Font::Custom(..)`.
 
 ### Rotations
 Since unicode block elements can't just be rotated by rearranging the characters, rotation is built into the library.
